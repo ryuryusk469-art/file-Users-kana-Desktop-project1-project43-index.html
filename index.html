@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本語 位置の単語クイズ (Location Words Quiz)</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f7fafc;
+            color: #2d3748;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .quiz-container {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            padding: 35px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .progress {
+            font-size: 0.95rem;
+            color: #718096;
+            margin-bottom: 15px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .word-box {
+            background-color: #ebf8ff;
+            border: 2px solid #bee3f8;
+            border-radius: 14px;
+            padding: 30px 20px;
+            margin: 20px 0;
+        }
+        .word-label {
+            font-size: 0.9rem;
+            color: #2b6cb0;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .question-word {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2b6cb0;
+        }
+        .instruction {
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            color: #4a5568;
+        }
+        .btn-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .choice-btn {
+            padding: 16px 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .choice-btn .romaji {
+            font-size: 0.9rem;
+            color: #718096;
+            font-weight: normal;
+        }
+        .choice-btn:hover {
+            background-color: #edf2f7;
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+        }
+        
+        /* 結果表示エリア */
+        .result-panel {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+            text-align: left;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .correct {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+        .incorrect {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+        .result-details {
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+        .next-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: #2b6cb0;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.2s;
+        }
+        .next-btn:hover {
+            background-color: #2c5282;
+        }
+    </style>
+</head>
+<body>
+
+<div class="quiz-container">
+    <div class="progress" id="progress">WORD 1 / 10</div>
+    
+    <div class="word-box">
+        <div class="word-label">English</div>
+        <div class="question-word" id="question-word">in front of</div>
+    </div>
+    
+    <div class="instruction">What is this in Japanese?</div>
+    
+    <div class="btn-container" id="btn-container">
+        <!-- ボタンがJavaScriptで自動生成されます -->
+    </div>
+
+    <div class="result-panel" id="result-panel">
+        <div class="result-title" id="result-title">🎉 Correct!</div>
+        <div class="result-details" id="result-details">
+            <!-- ここに正解の英単語と日本語が入ります -->
+        </div>
+        <button class="next-btn" id="next-btn" onclick="nextQuestion()">Next Word ➔</button>
+    </div>
+</div>
+
+<script>
+    // 提供されたリストに基づく10組のデータ
+    const wordData = [
+        { english: "to the right of", hiragana: "みぎ", romaji: "migi" },
+        { english: "to the left of", hiragana: "ひだり", romaji: "hidari" },
+        { english: "in front of", hiragana: "まえ", romaji: "mae" },
+        { english: "behind", hiragana: "うしろ", romaji: "ushiro" },
+        { english: "inside", hiragana: "なか", romaji: "naka" },
+        { english: "on / above", hiragana: "うえ", romaji: "ue" },
+        { english: "under / beneath", hiragana: "した", romaji: "shita" },
+        { english: "near", hiragana: "ちかく", romaji: "chikaku" },
+        { english: "next to", hiragana: "となり", romaji: "tonari" },
+        { english: "between Y and Z", hiragana: "あいだ", romaji: "aida" }
+    ];
+
+    let currentIdx = 0;
+    let quizSet = [];
+
+    // クイズを毎回シャッフルして新鮮に遊べるようにする関数
+    function shuffleArray(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    function initQuiz() {
+        // 出題順をシャッフル
+        quizSet = shuffleArray([...wordData]);
+        currentIdx = 0;
+        loadQuiz();
+    }
+
+    function loadQuiz() {
+        const currentPair = quizSet[currentIdx];
+        
+        // 画面表示更新
+        document.getElementById("progress").innerText = `WORD ${currentIdx + 1} / ${quizSet.length}`;
+        document.getElementById("question-word").innerText = currentPair.english;
+        document.getElementById("result-panel").style.display = "none";
+        
+        // 4択の選択肢を作成（正解1つ + ダミー3つ）
+        let choices = [currentPair];
+        let remainingOptions = wordData.filter(item => item.english !== currentPair.english);
+        shuffleArray(remainingOptions);
+        
+        // ダミーを3つ追加して合計4択にする
+        for(let i = 0; i < 3; i++) {
+            if(remainingOptions[i]) choices.push(remainingOptions[i]);
+        }
+        
+        // 選択肢の並び順もシャッフル
+        shuffleArray(choices);
+        
+        // ボタンの生成
+        const btnContainer = document.getElementById("btn-container");
+        btnContainer.innerHTML = "";
+        
+        choices.forEach(choice => {
+            const button = document.createElement("button");
+            button.className = "choice-btn";
+            button.innerHTML = `
+                <span>${choice.hiragana}</span>
+                <span class="romaji">(${choice.romaji})</span>
+            `;
+            // 正誤判定用に、選んだ単語のenglishを渡す
+            button.onclick = () => checkAnswer(choice.english, currentPair);
+            btnContainer.appendChild(button);
+        });
+    }
+
+    function checkAnswer(selectedEnglish, correctAnswer) {
+        const resultPanel = document.getElementById("result-panel");
+        const resultTitle = document.getElementById("result-title");
+        const resultDetails = document.getElementById("result-details");
+        
+        // すべてのボタンを無効化
+        const buttons = document.querySelectorAll(".choice-btn");
+        buttons.forEach(btn => btn.disabled = true);
+
+        if (selectedEnglish === correctAnswer.english) {
+            resultPanel.className = "result-panel correct";
+            resultTitle.innerText = "🎉 Correct!";
+        } else {
+            resultPanel.className = "result-panel incorrect";
+            resultTitle.innerText = "💡 Check the Word!";
+        }
+
+        resultDetails.innerHTML = `
+            <strong>${correctAnswer.english}</strong> = 
+            <span style="font-size: 1.2rem; font-weight: bold;">${correctAnswer.hiragana}</span> (${correctAnswer.romaji})
+        `;
+        resultPanel.style.display = "block";
+
+        if (currentIdx === quizSet.length - 1) {
+            document.getElementById("next-btn").innerText = "Restart Quiz ↺";
+        } else {
+            document.getElementById("next-btn").innerText = "Next Word ➔";
+        }
+    }
+
+    function nextQuestion() {
+        if (currentIdx === quizSet.length - 1) {
+            initQuiz(); // 最後まで行ったらリスタート
+        } else {
+            currentIdx++;
+            loadQuiz();
+        }
+    }
+
+    // アプリ起動
+    initQuiz();
+</script>
+
+</body>
+</html>
